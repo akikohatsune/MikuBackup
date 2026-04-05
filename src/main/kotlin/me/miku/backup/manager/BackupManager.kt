@@ -1,12 +1,16 @@
 package me.miku.backup.manager
 
+import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.future.await
 import kotlinx.coroutines.withContext
 import me.miku.backup.config.ConfigManager
 import me.miku.backup.service.DriveService
 import me.miku.backup.util.ZipUtils
 import org.bukkit.Bukkit
+import org.bukkit.ChatColor
+import org.bukkit.command.CommandSender
 import org.bukkit.plugin.java.JavaPlugin
 import java.io.File
 import java.text.SimpleDateFormat
@@ -21,12 +25,23 @@ class BackupManager(
     private val logger: Logger
 ) {
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd-HH-mm-ss")
+    private var isTaskRunning = false
 
-    suspend fun runBackup(manual: Boolean = false) {
+    fun isBackupRunning(): Boolean = isTaskRunning
+
+    suspend fun runBackup(manualSender: CommandSender? = null) = coroutineScope {
+        if (isTaskRunning) {
+            manualSender?.sendMessage("${ChatColor.RED}Một tác vụ sao lưu đang được thực hiện!")
+            return@coroutineScope
+        }
+        
+        isTaskRunning = true
         val startTime = System.currentTimeMillis()
-        logger.info("Starting backup...")
+        var backupFile: File? = null
 
         try {
+            logger.info("Starting backup...")
+
             // 1. Force save worlds on main thread
             val future = CompletableFuture<Unit>()
             Bukkit.getScheduler().runTask(plugin, Runnable {
@@ -49,7 +64,8 @@ class BackupManager(
 
             val timestamp = dateFormat.format(Date())
             val backupFileName = "${config.backupPrefix}$timestamp.zip"
-            val backupFile = File(backupFolder, backupFileName)
+            val currentBackupFile = File(backupFolder, backupFileName)
+            backupFile = currentBackupFile
 
             // 3. Zip files in IO thread
             withContext(Dispatchers.IO) {
@@ -63,17 +79,17 @@ class BackupManager(
                 }
 
                 logger.info("Zipping worlds...")
-                ZipUtils.zipFolders(worldFiles, backupFile)
+                ZipUtils.zipFolders(worldFiles, currentBackupFile)
             }
 
-            val fileSize = ZipUtils.formatSize(backupFile.length())
+            val fileSize = ZipUtils.formatSize(currentBackupFile.length())
             val duration = (System.currentTimeMillis() - startTime) / 1000.0
 
             // 4. Upload to Google Drive
             if (config.driveEnabled) {
                 withContext(Dispatchers.IO) {
                     logger.info("Uploading to Google Drive...")
-                    val driveId = driveService.uploadFile(backupFile)
+                    val driveId = driveService.uploadFile(currentBackupFile)
                     if (driveId != null) {
                         logger.info("Successfully uploaded to Google Drive. File ID: $driveId")
                         driveService.cleanupOldBackups()
@@ -99,19 +115,23 @@ class BackupManager(
                 }
             }
 
+            val finalMsg = ChatColor.translateAlternateColorCodes('&', 
+                config.messageSuccess.replace("%duration%", String.format("%.2f", duration)).replace("%size%", fileSize))
+            
             logger.info("Backup finished. Duration: ${duration}s. Size: $fileSize")
-            
-            val successMsg = config.messageSuccess
-                .replace("%duration%", String.format("%.2f", duration))
-                .replace("%size%", fileSize)
-            
-            if (manual) {
-                // Return success to the command sender
-            }
+            manualSender?.sendMessage("${ChatColor.translateAlternateColorCodes('&', config.messagePrefix)}$finalMsg")
 
+        } catch (e: CancellationException) {
+            logger.warning("Backup task was cancelled.")
+            manualSender?.sendMessage("${ChatColor.RED}Tác vụ sao lưu đã bị dừng.")
+            if (backupFile?.exists() == true) {
+                backupFile.delete()
+            }
         } catch (e: Exception) {
             logger.severe("Backup failed: ${e.message}")
-            e.printStackTrace()
+            manualSender?.sendMessage("${ChatColor.RED}Backup thất bại! Xem Console.")
+        } finally {
+            isTaskRunning = false
         }
     }
 }

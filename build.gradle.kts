@@ -23,8 +23,9 @@ dependencies {
     // Cron utils
     implementation("com.cronutils:cron-utils:9.2.1")
 
-    // Google Drive API
-    implementation("com.google.api-client:google-api-client:2.0.0")
+    // Google Drive API & OAuth
+    implementation("com.google.api-client:google-api-client:2.2.0")
+    implementation("com.google.oauth-client:google-oauth-client-jetty:1.34.1")
     implementation("com.google.apis:google-api-services-drive:v3-rev20230815-2.0.0")
     implementation("com.google.auth:google-auth-library-oauth2-http:1.19.0")
 }

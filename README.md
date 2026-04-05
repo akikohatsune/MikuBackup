@@ -1,4 +1,4 @@
-# MikuBackup 📦
+# <img src="assets/miku.jpg" width="64" height="64" align="center"> MikuBackup 📦
 
 **MikuBackup** is a production-ready Minecraft Paper/Spigot plugin written in Kotlin. It provides automated, scheduled backups of your server worlds, compresses them into ZIP archives, and securely uploads them to Google Drive.
 

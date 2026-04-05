@@ -1,51 +1,37 @@
 package me.miku.backup.service
 
+import com.google.api.client.googleapis.javanet.GoogleNetHttpTransport
+import com.google.api.client.googleapis.media.MediaHttpUploader
 import com.google.api.client.http.FileContent
 import com.google.api.client.json.gson.GsonFactory
 import com.google.api.services.drive.Drive
-import com.google.api.services.drive.DriveScopes
 import com.google.api.services.drive.model.File
-import com.google.auth.http.HttpCredentialsAdapter
-import com.google.auth.oauth2.GoogleCredentials
+import me.miku.backup.auth.GoogleAuthManager
 import me.miku.backup.config.ConfigManager
-import java.io.FileInputStream
-import java.nio.file.Path
 import java.util.logging.Logger
 
 class DriveService(
     private val config: ConfigManager,
-    private val logger: Logger,
-    private val dataFolder: java.io.File
+    private val authManager: GoogleAuthManager,
+    private val logger: Logger
 ) {
     private var drive: Drive? = null
 
-    init {
-        initialize()
-    }
-
     fun initialize() {
-        if (!config.driveEnabled) return
+        if (!config.driveEnabled || !authManager.isReady) return
         
         try {
-            val jsonFile = java.io.File(dataFolder, config.serviceAccountJson)
-            if (!jsonFile.exists()) {
-                logger.warning("Google Drive Service Account JSON not found at ${jsonFile.absolutePath}")
-                return
-            }
-
-            val credentials = GoogleCredentials.fromStream(FileInputStream(jsonFile))
-                .createScoped(listOf(DriveScopes.DRIVE_FILE))
+            val credential = authManager.getCredential() ?: return
 
             drive = Drive.Builder(
-                com.google.api.client.googleapis.javanet.GoogleNetHttpTransport.newTrustedTransport(),
+                GoogleNetHttpTransport.newTrustedTransport(),
                 GsonFactory.getDefaultInstance(),
-                HttpCredentialsAdapter(credentials)
+                credential
             ).setApplicationName("MikuBackup").build()
             
-            logger.info("Google Drive Service initialized.")
+            logger.info("Google Drive Service initialized (OAuth 2.0).")
         } catch (e: Exception) {
             logger.severe("Failed to initialize Google Drive Service: ${e.message}")
-            e.printStackTrace()
         }
     }
 
@@ -60,10 +46,14 @@ class DriveService(
             }
 
             val mediaContent = FileContent("application/zip", localFile)
-            val uploadedFile = driveService.files().create(fileMetadata, mediaContent)
-                .setFields("id")
-                .execute()
+            val insert = driveService.files().create(fileMetadata, mediaContent)
             
+            // Enable Resumable Upload
+            val uploader = insert.mediaHttpUploader
+            uploader.isDirectUploadEnabled = false
+            uploader.chunkSize = MediaHttpUploader.MINIMUM_CHUNK_SIZE * 4 // 1MB chunks
+
+            val uploadedFile = insert.setFields("id").execute()
             uploadedFile.id
         } catch (e: Exception) {
             logger.severe("Failed to upload file to Google Drive: ${e.message}")
