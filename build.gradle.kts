@@ -1,6 +1,6 @@
 plugins {
     kotlin("jvm") version "1.9.22"
-    id("com.github.johnrengelman.shadow") version "8.1.1"
+    id("com.gradleup.shadow") version "8.3.0"
 }
 
 group = "me.miku.backup"
@@ -37,10 +37,6 @@ kotlin {
 tasks {
     shadowJar {
         archiveClassifier.set("")
-        relocate("kotlin", "me.miku.backup.libs.kotlin")
-        relocate("kotlinx.coroutines", "me.miku.backup.libs.coroutines")
-        relocate("com.cronutils", "me.miku.backup.libs.cronutils")
-        relocate("com.google", "me.miku.backup.libs.google")
     }
     
     build {
