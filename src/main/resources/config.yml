@@ -1,0 +1,38 @@
+# MikuBackup Configuration
+
+schedule:
+  mode: "CRON" # FIXED_INTERVAL | DAILY_TIME | CRON
+  intervalMinutes: 60
+  dailyTimes:
+    - "03:00"
+    - "15:00"
+  cronExpression: "0 0 3 * * ?"
+
+google-drive:
+  enabled: true
+  # Path to service account JSON file relative to plugin folder
+  service-account-json: "service-account.json"
+  # Target Google Drive folder ID
+  folder-id: "YOUR_DRIVE_FOLDER_ID"
+  # Maximum remote backups to keep (0 for unlimited)
+  keep-count: 7
+
+backup:
+  # List of world names to backup
+  worlds:
+    - "world"
+    - "world_nether"
+    - "world_the_end"
+  # Path to local backup folder relative to server root
+  local-path: "backups"
+  # Maximum local backups to keep
+  keep-count: 3
+  # Filename prefix
+  prefix: "backup-"
+
+messages:
+  prefix: "&b[MikuBackup] &r"
+  success: "&aBackup completed successfully in %duration%s. Size: %size%."
+  failure: "&cBackup failed! Check console for details."
+  reloaded: "&aConfiguration reloaded."
+  scheduled: "&7Next backup scheduled for: &e%time%"

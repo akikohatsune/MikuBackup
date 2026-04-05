@@ -1,0 +1,13 @@
+name: MikuBackup
+version: 1.0.0
+main: me.miku.backup.MikuBackup
+api-version: '1.20'
+author: Miku
+commands:
+  backup:
+    description: Main backup command
+    permission: mikubackup.admin
+permissions:
+  mikubackup.admin:
+    description: Admin permission for MikuBackup
+    default: op
