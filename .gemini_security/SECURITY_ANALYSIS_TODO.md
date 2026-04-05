@@ -1,0 +1,14 @@
+- [x] Define the audit scope.
+- [x] SAST Recon on `src/main/kotlin/me/miku/backup/command/CommandHandler.kt`
+  - [x] Investigate data flow from `args[1]` on line 142 (verify command).
+- [x] SAST Recon on `src/main/kotlin/me/miku/backup/service/DriveService.kt`
+  - [x] Investigate data flow from `config.driveFolderId` and `config.backupPrefix` on line 46 and 84.
+- [x] SAST Recon on `src/main/kotlin/me/miku/backup/config/ConfigManager.kt`
+  - [x] Investigate data flow from `config.localPath` on line 44.
+- [x] SAST Recon on `src/main/kotlin/me/miku/backup/MikuBackup.kt`
+- [x] SAST Recon on `src/main/kotlin/me/miku/backup/manager/BackupManager.kt`
+  - [x] Investigate data flow from `config.localPath` on line 55.
+- [x] SAST Recon on `src/main/kotlin/me/miku/backup/auth/GoogleAuthManager.kt`
+- [x] SAST Recon on `src/main/kotlin/me/miku/backup/util/ZipUtils.kt`
+- [x] SAST Recon on `src/main/kotlin/me/miku/backup/scheduler/SchedulerService.kt`
+- [x] Conduct the final review of all findings as per your **Minimizing False Positives** operating principle and generate the final report.

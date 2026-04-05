@@ -1,12 +1,14 @@
-package me.miku.backup.scheduler
+package miku.hatsuneakiko.backup.scheduler
 
 import com.cronutils.model.CronType
 import com.cronutils.model.definition.CronDefinitionBuilder
 import com.cronutils.model.time.ExecutionTime
 import com.cronutils.parser.CronParser
 import kotlinx.coroutines.*
-import me.miku.backup.config.ConfigManager
-import me.miku.backup.manager.BackupManager
+import miku.hatsuneakiko.backup.config.ConfigManager
+import miku.hatsuneakiko.backup.manager.BackupManager
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
+import org.bukkit.Bukkit
 import java.time.Duration
 import java.time.LocalTime
 import java.time.ZonedDateTime
@@ -22,6 +24,7 @@ class SchedulerService(
     private var job: Job? = null
     private val cronDefinition = CronDefinitionBuilder.instanceDefinitionFor(CronType.QUARTZ)
     private val parser = CronParser(cronDefinition)
+    private val legacy = LegacyComponentSerializer.legacyAmpersand()
 
     fun start() {
         stop()
@@ -32,7 +35,24 @@ class SchedulerService(
 
                 if (delayMs > 0) {
                     logger.info("Next backup scheduled for: ${nextRun.format(DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss"))}")
-                    delay(delayMs)
+                    
+                    val tenMinutesInMs = 10 * 60 * 1000L
+                    if (delayMs > tenMinutesInMs) {
+                        // Wait until 10 minutes before
+                        delay(delayMs - tenMinutesInMs)
+                        
+                        // Broadcast warning
+                        if (isActive) {
+                            val msg = legacy.deserialize(config.messageWarning)
+                            Bukkit.broadcast(msg)
+                            logger.info("Sent 10-minute backup warning to players.")
+                            
+                            // Wait the remaining 10 minutes
+                            delay(tenMinutesInMs)
+                        }
+                    } else {
+                        delay(delayMs)
+                    }
                 }
 
                 if (isActive) {

@@ -38,3 +38,4 @@ messages:
   failure: "&cBackup failed! Check console for details."
   reloaded: "&aConfiguration reloaded."
   scheduled: "&7Next backup scheduled for: &e%time%"
+  warning: "&e[MikuBackup] &cServer will backup in 10 minutes! Expect some lag."

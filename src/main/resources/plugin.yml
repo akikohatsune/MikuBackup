@@ -1,6 +1,6 @@
 name: MikuBackup
 version: 1.0.0
-main: me.miku.backup.MikuBackup
+main: miku.hatsuneakiko.backup.MikuBackup
 api-version: '1.20'
 author: Miku
 commands:

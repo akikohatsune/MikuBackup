@@ -1,15 +1,17 @@
-package me.miku.backup.manager
+package miku.hatsuneakiko.backup.manager
 
 import kotlinx.coroutines.CancellationException
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.future.await
 import kotlinx.coroutines.withContext
-import me.miku.backup.config.ConfigManager
-import me.miku.backup.service.DriveService
-import me.miku.backup.util.ZipUtils
+import miku.hatsuneakiko.backup.config.ConfigManager
+import miku.hatsuneakiko.backup.service.DriveService
+import miku.hatsuneakiko.backup.util.ZipUtils
+import net.kyori.adventure.text.Component
+import net.kyori.adventure.text.format.NamedTextColor
+import net.kyori.adventure.text.serializer.legacy.LegacyComponentSerializer
 import org.bukkit.Bukkit
-import org.bukkit.ChatColor
 import org.bukkit.command.CommandSender
 import org.bukkit.plugin.java.JavaPlugin
 import java.io.File
@@ -26,12 +28,48 @@ class BackupManager(
 ) {
     private val dateFormat = SimpleDateFormat("yyyy-MM-dd-HH-mm-ss")
     private var isTaskRunning = false
+    private val legacy = LegacyComponentSerializer.legacyAmpersand()
 
     fun isBackupRunning(): Boolean = isTaskRunning
 
+    suspend fun testBackup(sender: CommandSender) = withContext(Dispatchers.IO) {
+        if (isTaskRunning) {
+            sender.sendMessage(Component.text("Một tác vụ sao lưu đang được thực hiện!", NamedTextColor.RED))
+            return@withContext
+        }
+
+        if (!config.driveEnabled) {
+            sender.sendMessage(legacy.deserialize(config.messagePrefix).append(legacy.deserialize("&cGoogle Drive hiện đang bị TẮT trong config.yml!")))
+            return@withContext
+        }
+
+        sender.sendMessage(legacy.deserialize(config.messagePrefix).append(legacy.deserialize("&7Đang kiểm tra kết nối Google Drive...")))
+
+        try {
+            val testFile = File(plugin.dataFolder, "test-connection.txt")
+            testFile.writeText("MikuBackup Connection Test\nTimestamp: ${Date()}\nServer: ${Bukkit.getServer().name}")
+
+            val driveId = driveService.uploadFile(testFile, "text/plain")
+            
+            if (driveId != null) {
+                sender.sendMessage(legacy.deserialize(config.messagePrefix).append(legacy.deserialize("&aKết nối thành công! File ID: &e$driveId")))
+                logger.info("Test upload successful. File ID: $driveId")
+            } else {
+                sender.sendMessage(legacy.deserialize(config.messagePrefix).append(legacy.deserialize("&cKết nối thất bại! Hãy kiểm tra thông tin Service Account hoặc ID Folder.")))
+            }
+            
+            if (testFile.exists()) {
+                testFile.delete()
+            }
+        } catch (e: Exception) {
+            sender.sendMessage(legacy.deserialize(config.messagePrefix).append(legacy.deserialize("&cCó lỗi xảy ra: ${e.message}")))
+            logger.severe("Test backup failed: ${e.message}")
+        }
+    }
+
     suspend fun runBackup(manualSender: CommandSender? = null) = coroutineScope {
         if (isTaskRunning) {
-            manualSender?.sendMessage("${ChatColor.RED}Một tác vụ sao lưu đang được thực hiện!")
+            manualSender?.sendMessage(Component.text("Một tác vụ sao lưu đang được thực hiện!", NamedTextColor.RED))
             return@coroutineScope
         }
         
@@ -121,21 +159,26 @@ class BackupManager(
                 }
             }
 
-            val finalMsg = ChatColor.translateAlternateColorCodes('&', 
-                config.messageSuccess.replace("%duration%", String.format("%.2f", duration)).replace("%size%", fileSize))
+            val finalMsg = legacy.deserialize(config.messageSuccess.replace("%duration%", String.format("%.2f", duration)).replace("%size%", fileSize))
             
             logger.info("Backup finished. Duration: ${duration}s. Size: $fileSize")
-            manualSender?.sendMessage("${ChatColor.translateAlternateColorCodes('&', config.messagePrefix)}$finalMsg")
+            
+            val broadcastMsg = legacy.deserialize(config.messagePrefix).append(finalMsg)
+            Bukkit.broadcast(broadcastMsg)
+            
+            if (manualSender != null && manualSender != Bukkit.getConsoleSender()) {
+                manualSender.sendMessage(broadcastMsg)
+            }
 
         } catch (e: CancellationException) {
             logger.warning("Backup task was cancelled.")
-            manualSender?.sendMessage("${ChatColor.RED}Tác vụ sao lưu đã bị dừng.")
+            manualSender?.sendMessage(Component.text("Tác vụ sao lưu đã bị dừng.", NamedTextColor.RED))
             if (backupFile?.exists() == true) {
                 backupFile.delete()
             }
         } catch (e: Exception) {
             logger.severe("Backup failed: ${e.message}")
-            manualSender?.sendMessage("${ChatColor.RED}Backup thất bại! Xem Console.")
+            manualSender?.sendMessage(Component.text("Backup thất bại! Xem Console.", NamedTextColor.RED))
         } finally {
             isTaskRunning = false
         }
