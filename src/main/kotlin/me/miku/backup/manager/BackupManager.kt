@@ -58,6 +58,12 @@ class BackupManager(
 
             // 2. Prepare backup folder
             val backupFolder = File(plugin.server.worldContainer, config.localPath)
+            val containerPath = plugin.server.worldContainer.canonicalPath
+            val backupPath = backupFolder.canonicalPath
+            if (!backupPath.startsWith(containerPath + File.separator) && backupPath != containerPath) {
+                throw SecurityException("Path traversal detected in backup local-path configuration!")
+            }
+            
             if (!backupFolder.exists()) {
                 backupFolder.mkdirs()
             }

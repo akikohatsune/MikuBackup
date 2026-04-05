@@ -41,10 +41,12 @@ class DriveService(
         return try {
             // Nếu ở chế độ Overwrite, tìm file cũ có cùng prefix và xóa đi
             if (config.driveOverwrite) {
+                val safeFolderId = config.driveFolderId.replace("'", "\\'")
+                val safePrefix = config.backupPrefix.replace("'", "\\'")
                 val query = if (config.driveFolderId.isNotEmpty()) {
-                    "'${config.driveFolderId}' in parents and name contains '${config.backupPrefix}' and trashed = false"
+                    "'$safeFolderId' in parents and name contains '$safePrefix' and trashed = false"
                 } else {
-                    "name contains '${config.backupPrefix}' and trashed = false"
+                    "name contains '$safePrefix' and trashed = false"
                 }
                 
                 val result = driveService.files().list()
