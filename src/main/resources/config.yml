@@ -10,6 +10,8 @@ schedule:
 
 google-drive:
   enabled: true
+  # Chế độ lưu: true = luôn lưu đè file cũ, false = mỗi lần một file mới
+  overwrite-mode: false
   # Path to service account JSON file relative to plugin folder
   service-account-json: "service-account.json"
   # Target Google Drive folder ID

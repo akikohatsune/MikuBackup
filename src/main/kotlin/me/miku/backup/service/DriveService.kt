@@ -39,6 +39,25 @@ class DriveService(
         val driveService = drive ?: return null
         
         return try {
+            // Nếu ở chế độ Overwrite, tìm file cũ có cùng prefix và xóa đi
+            if (config.driveOverwrite) {
+                val query = if (config.driveFolderId.isNotEmpty()) {
+                    "'${config.driveFolderId}' in parents and name contains '${config.backupPrefix}' and trashed = false"
+                } else {
+                    "name contains '${config.backupPrefix}' and trashed = false"
+                }
+                
+                val result = driveService.files().list()
+                    .setQ(query)
+                    .setFields("files(id, name)")
+                    .execute()
+                
+                result.files?.forEach { oldFile ->
+                    driveService.files().delete(oldFile.id).execute()
+                    logger.info("Overwrite mode: Deleted old file ${oldFile.name}")
+                }
+            }
+
             val fileMetadata = File()
             fileMetadata.name = localFile.name
             if (config.driveFolderId.isNotEmpty()) {
@@ -62,6 +81,8 @@ class DriveService(
     }
 
     fun cleanupOldBackups() {
+        if (config.driveOverwrite) return // Không dọn dẹp nếu đang ở chế độ lưu đè (vì chỉ có 1 file)
+        
         val driveService = drive ?: return
         if (config.driveKeepCount <= 0) return
 

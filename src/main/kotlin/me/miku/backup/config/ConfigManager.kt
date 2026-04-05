@@ -10,6 +10,7 @@ class ConfigManager(private val plugin: JavaPlugin) {
     var cronExpression: String = "0 0 3 * * ?"
 
     var driveEnabled: Boolean = true
+    var driveOverwrite: Boolean = false
     var serviceAccountJson: String = "service-account.json"
     var driveFolderId: String = ""
     var driveKeepCount: Int = 7
@@ -40,6 +41,7 @@ class ConfigManager(private val plugin: JavaPlugin) {
         cronExpression = config.getString("schedule.cronExpression", "0 0 3 * * ?") ?: "0 0 3 * * ?"
 
         driveEnabled = config.getBoolean("google-drive.enabled", true)
+        driveOverwrite = config.getBoolean("google-drive.overwrite-mode", false)
         serviceAccountJson = config.getString("google-drive.service-account-json", "service-account.json") ?: "service-account.json"
         driveFolderId = config.getString("google-drive.folder-id", "") ?: ""
         driveKeepCount = config.getInt("google-drive.keep-count", 7)
@@ -54,5 +56,11 @@ class ConfigManager(private val plugin: JavaPlugin) {
         messageFailure = config.getString("messages.failure", "&cBackup failed! Check console for details.") ?: ""
         messageReloaded = config.getString("messages.reloaded", "&aConfiguration reloaded.") ?: ""
         messageScheduled = config.getString("messages.scheduled", "&7Next backup scheduled for: &e%time%") ?: ""
+    }
+
+    fun setOverwriteMode(enabled: Boolean) {
+        this.driveOverwrite = enabled
+        plugin.config.set("google-drive.overwrite-mode", enabled)
+        plugin.saveConfig()
     }
 }
